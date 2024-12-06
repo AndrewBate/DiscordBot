@@ -51,7 +51,7 @@ namespace DiscordBot {
                 { "boondps", 2 },
                 { "alacrity", 2 },
                 { "quickness", 2 },
-                { "DPS", 2 }
+                { "DPS", 6 }
             },
         };
     }
@@ -60,16 +60,7 @@ namespace DiscordBot {
     internal class ConstraintSolver {
         // Converts input contstraints to DancingLinks algorithm
 
-        class DlxLinks {
-            string _player;
-            string _role;
 
-            DlxLinks _up;
-            DlxLinks _down;
-
-            DlxLinks _left;
-            DlxLinks _right;
-        }
     }
 }
 
