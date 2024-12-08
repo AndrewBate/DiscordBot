@@ -10,7 +10,7 @@ using System.Reflection;
 
 // Copypasta from Example
 
-namespace InteractionFramework;
+namespace DiscordBot;
 public class Program {
 
     private static IConfiguration _configuration;

@@ -4,7 +4,7 @@ using Discord.Interactions;
 using System;
 using System.Threading.Tasks;
 
-namespace InteractionFramework.Modules;
+namespace DiscordBot.Modules;
 
 // Interaction modules must be public and inherit from an IInteractionModuleBase
 public class ExampleModule : InteractionModuleBase<SocketInteractionContext> {

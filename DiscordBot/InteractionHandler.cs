@@ -14,7 +14,7 @@ using System.Threading.Tasks;
 
 // Copypasta from example
 
-namespace InteractionFramework;
+namespace DiscordBot;
 
 public class InteractionHandler {
     private readonly DiscordSocketClient _client;
