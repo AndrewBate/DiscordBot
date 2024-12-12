@@ -1,6 +1,7 @@
 ﻿using Discord;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -84,13 +85,16 @@ public class ConstraintSolver {
     List<Tuple<string, Role>> PlayerRoles
         = new List<Tuple<string, Role>>();
 
+    SquadRequirements Requirements;
+
     public ConstraintSolver(SquadRequirements req) {
+        Requirements = req;
 
         foreach (var (attr, count) in req.attributeCount) {
             // Insert column header to dlx
 
             var attridx = Dlx.addColumnHeader(count, count, attr);
-            Console.WriteLine("attr {0}, idx = {1} ", attr, attridx);
+            
 
             AttributeColumnHeaderIdxs[attr] = attridx;
         }
@@ -152,7 +156,9 @@ public class ConstraintSolver {
 
         Console.WriteLine("final size = {0}", dlxRes.Count());
 
-
+        if (dlxRes.Count > 0) {
+            CheckResults(dlxRes);
+        }
 
         var res = new List<Tuple<string, Role>>();
 
@@ -161,6 +167,51 @@ public class ConstraintSolver {
         }
 
         return res;
+    }
+
+    private void CheckResults(List<int> dlxRes) {
+
+        Dictionary<string, int> players = new Dictionary<string, int>();
+        Dictionary<string, int> attributes = new Dictionary<string, int>();
+
+        foreach (var player in PlayerColumnHeaderIdxs.Keys ) {
+            players.Add(player, 0);
+        }
+
+        foreach (var attrib in Requirements.attributeCount) {
+            attributes.Add(attrib.Key, 0);
+        }
+
+        // Each player once
+        foreach (var rolidx in dlxRes) {
+            var (playername, role) = PlayerRoles[rolidx];
+
+            players[playername] = players[playername] + 1;
+          
+            foreach (var attr in role.attributes) {
+                attributes[attr]++;
+            }           
+        }
+
+        
+        List<string> errors = new List<string>();
+
+        foreach (var player in players) {
+            if (player.Value != 1) {
+                
+                errors.Add(player.Key + ": " + player.Value);
+            }
+        }
+
+        foreach (var attr in Requirements.attributeCount) {
+            if (attr.Value != attributes[attr.Key]) {
+                errors.Add("Incorrect " + attr.Key + " - expected: " + attr.Value + " got:" +  attributes[attr.Key]);
+            }
+        }
+
+        if (errors.Count > 0) {
+            throw new Exception(String.Join('\n', errors));
+        }
     }
 }
 
