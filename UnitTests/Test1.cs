@@ -153,4 +153,26 @@ public sealed class Test1 {
         Assert.AreEqual(2, quickCount, "wrong quick count");
 
     }
+
+    [TestMethod]
+    [Timeout (10000)]
+    public void TestUnfilledSquad() {
+        var cs = new ConstraintSolver(Util.basicRaidSquad);
+
+        for (int i = 0; i < 9; i++) {
+            var playerName = "player" + i.ToString();
+
+            cs.AddPlayerRole(playerName, Util.alacDPS);
+            cs.AddPlayerRole(playerName, Util.quickDPS);
+            cs.AddPlayerRole(playerName, Util.healAlac);
+            cs.AddPlayerRole(playerName, Util.healQuick);
+            cs.AddPlayerRole(playerName, Util.DPS);
+        }
+
+        Console.WriteLine("get player roles)");
+        var roles = cs.GetPlayerRoles();
+
+        Assert.AreEqual(0, roles.Count);
+
+    }
 }
