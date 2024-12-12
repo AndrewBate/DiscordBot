@@ -3,6 +3,7 @@ using Microsoft.VisualBasic;
 using System;
 using System.Collections.Generic;
 using System.Data.Common;
+using System.Diagnostics;
 using System.Linq;
 using System.Net.Http.Headers;
 using System.Reflection.Metadata;
@@ -21,16 +22,7 @@ namespace DiscordBot {
 
         public int colIdx;
 
-        public int Priority() {
-            // Lower numbers are higher priority
-            int needed = min - current;
-            if (needed > 0) {
-                return avail - needed;
-            } else {
-                return int.MaxValue;
-            }
-
-        }
+        //public override bool isColumnHeader() { return true; }
 
         public IEnumerable<DlxColumnHeader> ColumnHeaders() {
             yield return this;
@@ -40,7 +32,7 @@ namespace DiscordBot {
 
         }
 
-        public DlxColumnHeader(int min, int max, int colIdx) : base(0) {
+        public DlxColumnHeader(int min, int max, int colIdx, string nodeinfo) : base(-1, nodeinfo) {
             columnHeader = this;
             this.min = min;
             this.max = max;
@@ -64,31 +56,36 @@ namespace DiscordBot {
 
         public DlxColumnHeader columnHeader;
         public int rowIdx;
+        public string nodeInfo;
         public RemoveMode mode = RemoveMode.None;
 
 
 
 
-        protected DlxNode(int rowIndex) {
+
+        protected DlxNode(int rowIndex, string nodeInfo) {
 
             //columnHeader = columnHeader;
             this.rowIdx = rowIndex;
+            this.nodeInfo = nodeInfo;
             up = this;
             down = this;
             left = this;
             right = this;
+           
         }
 
-        public DlxNode(DlxColumnHeader columnHeader, int rowIndex) {
+        public DlxNode(DlxColumnHeader columnHeader, int rowIndex, string nodeInfo) {
             this.columnHeader = columnHeader;
             this.rowIdx = rowIndex;
+            this.nodeInfo = nodeInfo;
             up = this;
             down = this;
             left = this;
             right = this;
         }
 
-
+        public bool isColumnHeader() {  return rowIdx < 0; }
 
         public void remove(RemoveMode m) {
             up.down = down;
@@ -96,9 +93,7 @@ namespace DiscordBot {
 
             left.right = right;
             right.left = left;
-
-            Console.WriteLine("Removing {0},{1}", rowIdx, columnHeader.colIdx);
-            
+           
 
             switch (mode) {
                 case RemoveMode.None:
@@ -112,15 +107,25 @@ namespace DiscordBot {
 
             switch (m) {
                 case RemoveMode.Selected:
+                    if (isColumnHeader()) { throw new Exception("selecting column header"); }
+                    Console.WriteLine("removing selected: {0}", nodeInfo);
                     columnHeader.avail--;
                     columnHeader.current++;
                     break;
 
                 case RemoveMode.Impossible:
+                    if (isColumnHeader()) { throw new Exception("marking column header as impossible");  }
+                    Console.WriteLine("removing impossible: {0}", nodeInfo);
                     columnHeader.avail--;
                     break;
 
+                case RemoveMode.Plain:
+                    if (!isColumnHeader()) { throw new Exception("removing node withoug updating header");  }
+                    Console.WriteLine("removing plain: {0}", nodeInfo);
+                    break;
+
                 default:
+                    Console.WriteLine("removing plain: {0}", nodeInfo);
                     break;
             }
 
@@ -136,14 +141,17 @@ namespace DiscordBot {
 
             switch (mode) {
                 case RemoveMode.Plain:
+                    Console.WriteLine("reinserting plain: {0}", nodeInfo);
                     break;
 
                 case RemoveMode.Selected:
+                    Console.WriteLine("reinserting selected: {0}", nodeInfo);
                     columnHeader.avail++;
                     columnHeader.current--;
                     break;
 
                 case RemoveMode.Impossible:
+                    Console.WriteLine("reinserting impossbile: {0}", nodeInfo);
                     columnHeader.avail++;
                     break;
 
@@ -152,27 +160,6 @@ namespace DiscordBot {
 
             }
             mode = RemoveMode.None;
-        }
-
-
-
-        public IEnumerable<DlxNode> OthersInThisRow() {
-            for (var item = this.left; item != this; item = this.left) {
-                yield return item;
-            }
-        }
-
-        public IEnumerable<DlxNode> InThisRow() {
-
-            foreach (var item in OthersInThisRow())
-                yield return item;
-            yield return this;
-        }
-
-        public IEnumerable<DlxNode> OthersInThisColumn() {
-            for (var item = this.down; item != this; item = this.down) {
-                yield return item;
-            }
         }
 
     }
@@ -192,11 +179,14 @@ namespace DiscordBot {
             return nextRowIdx++;
         }
 
-        public void addNode(int rowIdx, int columnIdx) {
-            var node = new DlxNode(columns[columnIdx], rowIdx);
+        public void addNode(int rowIdx, int columnIdx, string nodeInfo) {
+            var node = new DlxNode(columns[columnIdx], rowIdx, nodeInfo);
             node.columnHeader.avail++;
-            Console.WriteLine("Row = {0}, Col = {1}, Min = {2}, Avail = {3}",
-                rowIdx, columnIdx, node.columnHeader.min, node.columnHeader.avail);
+            //Console.WriteLine("Row = {0}, Col = {1}, Min = {2}, Avail = {3}",
+            //     rowIdx, columnIdx, node.columnHeader.min, node.columnHeader.avail);
+            Console.WriteLine("{0} | {1}", nodeInfo, node.columnHeader.nodeInfo);
+          
+        
 
 
             node.up = node.columnHeader.up;
@@ -219,8 +209,8 @@ namespace DiscordBot {
             }
         }
 
-        public int addColumnHeader(int min, int max) {
-            var hdr = new DlxColumnHeader(min, max, columns.Count());
+        public int addColumnHeader(int min, int max, string nodeInfo) {
+            var hdr = new DlxColumnHeader(min, max, columns.Count(), nodeInfo);
             columns.Add(hdr);
 
             if (columns.Count() != 0) {
@@ -241,45 +231,47 @@ namespace DiscordBot {
 
             // Chose a cholumn with the fewest choices and count the columns 
             var selectedColumn = hdr;
-            int selPrio = selectedColumn.Priority();
+            // selPrio = number of spare options;
+            int selPrio = int.MaxValue;
             int columnCount = 0;
 
             foreach (var column in hdr.ColumnHeaders()) {
                 columnCount++;
-                int colPrio = column.Priority();
 
-                if (selPrio > colPrio) {
-                    selectedColumn = column;
-                    selPrio = colPrio;
+                int needed = column.min - column.current;
+
+                if (needed > 0) {
+
+                    int prio = column.avail - needed;
+
+                    if (prio < selPrio) {
+                        selectedColumn = column;
+                    }
+
+                    if (prio < 0) {
+                        Console.WriteLine("started solve with impossibility");
+                        return new List<int>();
+                    }
+
+                } else {
+                    Console.WriteLine("Unremoved filled column");
                 }
-
             }
 
-            Console.WriteLine("Selected: min = {0}, avail = {1}, current = {2} ",
-                selectedColumn.min, selectedColumn.avail, selectedColumn.current);
+            Console.WriteLine("Selected: {3} min = {0}, avail = {1}, current = {2} ",
+                selectedColumn.min, selectedColumn.avail, selectedColumn.current, selectedColumn.nodeInfo);
                 
-
-            if (selectedColumn.avail < selectedColumn.min) {
-                Console.WriteLine("Entry with insufficent: avail = {0}, min = {1}", 
-                    selectedColumn.avail, selectedColumn.min);
-                return new List<int>();
-            }
-
-            
-
             var rstack = new Stack<DlxNode>();
-
-
 
             // First node in this row, will be removed during traversal
             // This is a backtracking point
             for (var rowNode = selectedColumn.down; rowNode != selectedColumn; rowNode = rowNode.down) {
+                Debug.Assert(!rowNode.isColumnHeader());
                 // Try removing then solve with hdr
-
-                //foreach (var node in rowNode.InThisRow()) {
 
                 // Remove all the nodes in this row
                 for (var node = rowNode; node.mode == RemoveMode.None; node = node.left) {
+                    Debug.Assert(!node.isColumnHeader());
                     Console.WriteLine("rowidx {0}", node.rowIdx);
                     var selhdr = node.columnHeader;
 
@@ -287,10 +279,8 @@ namespace DiscordBot {
                     rstack.Push(node);
 
                     if (selhdr.current == selhdr.max || selhdr.avail == 0) {
+                        Console.WriteLine("filled/exhuasted {0} with {1}", selhdr.nodeInfo, node.nodeInfo);
 
-
-                        Console.WriteLine("header max = {0}, cur = {1}, avail = {2}, idx = {3}",
-                            selhdr.max, selhdr.current, selhdr.avail, selhdr.colIdx);
 
                         selhdr.remove(RemoveMode.Plain);
                         rstack.Push(selhdr);
@@ -310,6 +300,12 @@ namespace DiscordBot {
                                 if (imphdr.avail + imphdr.current < imphdr.min) {
                                     goto inconsitancyReached;
                                 }
+
+                                // Remove empty column header in situations where min != max
+                                if (imphdr.avail == 0 && imphdr != selhdr) {
+                                    imphdr.remove(RemoveMode.Plain);
+                                    rstack.Push(imphdr);
+                                }
                             }
                         }
                     }
@@ -319,8 +315,8 @@ namespace DiscordBot {
 
                 foreach (var colhdr in columns) {
                     if (colhdr.mode == RemoveMode.None) {
-                        Console.WriteLine("Columns, min = {0}, current = {1}, avail = {2}",
-                        colhdr.min, colhdr.current, colhdr.avail);
+                        Console.WriteLine("{3}, min = {0}, current = {1}, avail = {2}",
+                        colhdr.min, colhdr.current, colhdr.avail, colhdr.nodeInfo);
 
                         if (colhdr.min > colhdr.current) {
                             remainingColumnHeader = colhdr;
@@ -331,6 +327,7 @@ namespace DiscordBot {
 
                 if (remainingColumnHeader == null) {
                     Console.WriteLine("all columns done");
+                    
                     return new List<int> { rowNode.rowIdx };
                 } else {
                     recursionDepth++;

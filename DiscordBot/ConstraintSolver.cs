@@ -82,15 +82,14 @@ namespace DiscordBot {
             new Dictionary<string, int>();
 
         List<Tuple<string, Role>> PlayerRoles
-            = new List<Tuple<string, Role>>() { new Tuple<string, Role>("ErrorPlayer", Util.DPS) };
+            = new List<Tuple<string, Role>>();
 
         public ConstraintSolver(SquadRequirements req) {
             
             foreach (var (attr, count) in req.attributeCount) {
                 // Insert column header to dlx
 
-               
-                var attridx = Dlx.addColumnHeader(count, count);
+                var attridx = Dlx.addColumnHeader(count, count, attr);
                 Console.WriteLine("attr {0}, idx = {1} ", attr, attridx);
 
                AttributeColumnHeaderIdxs[attr] = attridx;
@@ -107,7 +106,7 @@ namespace DiscordBot {
                 var attridx = AttributeColumnHeaderIdxs[attr];
 
                 // Lookup idx;
-                Dlx.addNode(rowIdx, attridx);
+                Dlx.addNode(rowIdx, attridx, playername + " as " + role.name + " attr : " + attr );
             }
 
             // Lookup player column idx
@@ -116,12 +115,13 @@ namespace DiscordBot {
             if (PlayerColumnHeaderIdxs.ContainsKey(playername)) {
                 playeridx = PlayerColumnHeaderIdxs[playername];
             } else {
-                playeridx = Dlx.addColumnHeader(1, 1);
+                //Console.WriteLine("Adding Player {0}", playername);
+                playeridx = Dlx.addColumnHeader(1, 1, playername + "_hdr" );
                 PlayerColumnHeaderIdxs[playername] = playeridx;
             }
 
             // insert player node (and column header if needed)
-            Dlx.addNode(rowIdx, playeridx);
+            Dlx.addNode(rowIdx, playeridx, playername + " as " + role.name + " playerCol");
 
             PlayerRoles.Add(new Tuple<string, Role>(playername, role));
 
