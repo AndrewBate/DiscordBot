@@ -99,7 +99,6 @@ internal class DlxNode {
             case RemoveMode.None:
                 break;
             default:
-                //Console.WriteLine("Removing {0},{1}", rowIdx, columnHeader.colIdx);
                 throw new Exception("removing already removed");
         }
 
@@ -108,24 +107,20 @@ internal class DlxNode {
         switch (m) {
             case RemoveMode.Selected:
                 if (isColumnHeader()) { throw new Exception("selecting column header"); }
-                Console.WriteLine("removing selected: {0}", nodeInfo);
                 columnHeader.avail--;
                 columnHeader.current++;
                 break;
 
             case RemoveMode.Impossible:
                 if (isColumnHeader()) { throw new Exception("marking column header as impossible"); }
-                Console.WriteLine("removing impossible: {0}", nodeInfo);
                 columnHeader.avail--;
                 break;
 
             case RemoveMode.Plain:
                 if (!isColumnHeader()) { throw new Exception("removing node withoug updating header"); }
-                Console.WriteLine("removing plain: {0}", nodeInfo);
                 break;
 
             default:
-                Console.WriteLine("removing plain: {0}", nodeInfo);
                 break;
         }
 
@@ -141,17 +136,14 @@ internal class DlxNode {
 
         switch (mode) {
             case RemoveMode.Plain:
-                Console.WriteLine("reinserting plain: {0}", nodeInfo);
                 break;
 
             case RemoveMode.Selected:
-                Console.WriteLine("reinserting selected: {0}", nodeInfo);
                 columnHeader.avail++;
                 columnHeader.current--;
                 break;
 
             case RemoveMode.Impossible:
-                Console.WriteLine("reinserting impossbile: {0}", nodeInfo);
                 columnHeader.avail++;
                 break;
 
@@ -182,12 +174,6 @@ internal class DancingLinks {
     public void addNode(int rowIdx, int columnIdx, string nodeInfo) {
         var node = new DlxNode(columns[columnIdx], rowIdx, nodeInfo);
         node.columnHeader.avail++;
-        //Console.WriteLine("Row = {0}, Col = {1}, Min = {2}, Avail = {3}",
-        //     rowIdx, columnIdx, node.columnHeader.min, node.columnHeader.avail);
-        Console.WriteLine("{0} | {1}", nodeInfo, node.columnHeader.nodeInfo);
-
-
-
 
         node.up = node.columnHeader.up;
         node.down = node.columnHeader;
@@ -226,9 +212,6 @@ internal class DancingLinks {
     }
 
     List<int> Solve(DlxColumnHeader hdr) {
-
-        Console.WriteLine("solving...");
-
         // Chose a cholumn with the fewest choices and count the columns 
         var selectedColumn = hdr;
         // selPrio = number of spare options;
@@ -249,17 +232,11 @@ internal class DancingLinks {
                 }
 
                 if (prio < 0) {
-                    Console.WriteLine("started solve with impossibility");
                     return new List<int>();
                 }
 
-            } else {
-                Console.WriteLine("Unremoved filled column");
-            }
+            } 
         }
-
-        Console.WriteLine("Selected: {3} min = {0}, avail = {1}, current = {2} ",
-            selectedColumn.min, selectedColumn.avail, selectedColumn.current, selectedColumn.nodeInfo);
 
         var rstack = new Stack<DlxNode>();
 
@@ -272,22 +249,17 @@ internal class DancingLinks {
             // Remove all the nodes in this row
             for (var node = rowNode; node.mode == RemoveMode.None; node = node.left) {
                 Debug.Assert(!node.isColumnHeader());
-                Console.WriteLine("rowidx {0}", node.rowIdx);
                 var selhdr = node.columnHeader;
 
                 node.remove(RemoveMode.Selected);
                 rstack.Push(node);
 
                 if (selhdr.current == selhdr.max || selhdr.avail == 0) {
-                    Console.WriteLine("filled/exhuasted {0} with {1}", selhdr.nodeInfo, node.nodeInfo);
-
-
                     selhdr.remove(RemoveMode.Plain);
                     rstack.Push(selhdr);
 
                     // Remove all rows that satisfy this filled column
                     for (var improw = selhdr.down; improw.mode == RemoveMode.None; improw = improw.down) {
-                        Console.WriteLine("Removing improw {0}", improw.rowIdx);
                         // Remove all nodes in this row
                         for (var impnode = improw; impnode.mode == RemoveMode.None; impnode = impnode.left) {
 
@@ -315,8 +287,6 @@ internal class DancingLinks {
 
             foreach (var colhdr in columns) {
                 if (colhdr.mode == RemoveMode.None) {
-                    Console.WriteLine("{3}, min = {0}, current = {1}, avail = {2}",
-                    colhdr.min, colhdr.current, colhdr.avail, colhdr.nodeInfo);
 
                     if (colhdr.min > colhdr.current) {
                         remainingColumnHeader = colhdr;
@@ -326,8 +296,6 @@ internal class DancingLinks {
             }
 
             if (remainingColumnHeader == null) {
-                Console.WriteLine("all columns done");
-
                 return new List<int> { rowNode.rowIdx };
             } else {
                 recursionDepth++;
@@ -347,17 +315,15 @@ internal class DancingLinks {
 
         // Failed so reinsert node and choose something else
         inconsitancyReached:
-            Console.WriteLine("inconsistancy reached");
             while (rstack.Count() != 0) {
                 var reinsertNode = rstack.Pop();
                 reinsertNode.reinsert();
             }
 
         }
-        Console.WriteLine("returning empty");
+
         // return empty to signal we cant choose any here so next row up must choose
         return new List<int>();
-
     }
 
     public List<int> Solve() {

@@ -102,7 +102,7 @@ public class ConstraintSolver {
     }
 
     public int AddPlayerRole(string playername, Role role) {
-        Console.WriteLine("add player: {0} as {1}", playername, role.name);
+        
         var rowIdx = Dlx.getNextRowIdx();
 
         foreach (var attr in role.attributes) {
@@ -119,7 +119,6 @@ public class ConstraintSolver {
         if (PlayerColumnHeaderIdxs.ContainsKey(playername)) {
             playeridx = PlayerColumnHeaderIdxs[playername];
         } else {
-            //Console.WriteLine("Adding Player {0}", playername);
             playeridx = Dlx.addColumnHeader(1, 1, playername + "_hdr");
             PlayerColumnHeaderIdxs[playername] = playeridx;
         }
@@ -154,7 +153,6 @@ public class ConstraintSolver {
     public List<Tuple<string, Role>> GetPlayerRoles() {
         var dlxRes = Dlx.Solve();
 
-        Console.WriteLine("final size = {0}", dlxRes.Count());
 
         if (dlxRes.Count > 0) {
             CheckResults(dlxRes);
