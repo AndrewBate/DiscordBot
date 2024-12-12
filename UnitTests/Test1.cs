@@ -175,4 +175,39 @@ public sealed class Test1 {
         Assert.AreEqual(0, roles.Count);
 
     }
+
+    [TestMethod]
+    [Timeout(1000)]
+    public void TestBtRequred() {
+
+        // This test needs to be verified that it does test backtracking manually
+        // Such as by adding a print statement when it does backracking
+        var cs = new ConstraintSolver(Util.basicFractalSquad);
+
+        cs.AddPlayerRole("allP", Util.alacDPS);
+        cs.AddPlayerRole("allP", Util.quickDPS);
+        cs.AddPlayerRole("allP", Util.healAlac);
+        cs.AddPlayerRole("allP", Util.healQuick);
+        cs.AddPlayerRole("allP", Util.DPS);
+
+        cs.AddPlayerRole("boonp", Util.healAlac);
+        cs.AddPlayerRole("boonp", Util.quickDPS);
+
+        cs.AddPlayerRole("DPS1", Util.DPS);
+        cs.AddPlayerRole("DPS1", Util.healQuick);
+
+        cs.AddPlayerRole("DPS2", Util.DPS);
+
+        cs.AddPlayerRole("DPS3", Util.DPS);
+
+
+
+        var roles = cs.GetPlayerRoles();
+
+        foreach (var role in roles) {
+            Console.WriteLine("{0} as {1}", role.Item1, role.Item2.name );
+        }
+
+        Assert.AreEqual(5, roles.Count);    
+    }
 }

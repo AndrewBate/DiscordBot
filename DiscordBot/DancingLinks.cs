@@ -313,7 +313,7 @@ internal class DancingLinks {
 
             }
 
-        // Failed so reinsert node and choose something else
+            // Failed so reinsert node and choose something else
         inconsitancyReached:
             while (rstack.Count() != 0) {
                 var reinsertNode = rstack.Pop();
