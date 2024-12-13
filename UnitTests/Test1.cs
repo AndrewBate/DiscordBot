@@ -9,7 +9,7 @@ public sealed class Test1 {
     [TestMethod]
     [Timeout(1000)]
     public void CheckEasyFractalTeam() {
-                Console.WriteLine("new cs");
+        Console.WriteLine("new cs");
         var cs = new ConstraintSolver(Util.basicFractalSquad);
 
 
@@ -104,7 +104,7 @@ public sealed class Test1 {
 
         for (int i = 0; i < 10; i++) {
             var playerName = "player" + i.ToString();
-            
+
             cs.AddPlayerRole(playerName, Util.alacDPS);
             cs.AddPlayerRole(playerName, Util.quickDPS);
             cs.AddPlayerRole(playerName, Util.healAlac);
@@ -148,14 +148,14 @@ public sealed class Test1 {
 
         Assert.AreEqual(6, dpsCount, "wrong dps count");
         Assert.AreEqual(2, boonDPScount, "Wrong Boondps count");
-        Assert.AreEqual(2, healCount , "wrong heal count");
+        Assert.AreEqual(2, healCount, "wrong heal count");
         Assert.AreEqual(2, alacCount, "wrong alac count");
         Assert.AreEqual(2, quickCount, "wrong quick count");
 
     }
 
     [TestMethod]
-    [Timeout (10000)]
+    [Timeout(10000)]
     public void TestUnfilledSquad() {
         var cs = new ConstraintSolver(Util.basicRaidSquad);
 
@@ -205,9 +205,44 @@ public sealed class Test1 {
         var roles = cs.GetPlayerRoles();
 
         foreach (var role in roles) {
-            Console.WriteLine("{0} as {1}", role.Item1, role.Item2.name );
+            Console.WriteLine("{0} as {1}", role.Item1, role.Item2.name);
         }
 
-        Assert.AreEqual(5, roles.Count);    
+        Assert.AreEqual(5, roles.Count);
     }
+
+    [TestMethod, Timeout(10000)]
+    public void TestRedoSolving() {
+        Console.WriteLine("new cs");
+        var cs = new ConstraintSolver(Util.basicFractalSquad);
+
+
+        Console.WriteLine("add players");
+        cs.AddPlayerRole("healPlayer", Util.healAlac);
+        cs.AddPlayerRole("healPlayer", Util.healQuick);
+
+        cs.AddPlayerRole("boonPlayer", Util.alacDPS);
+        cs.AddPlayerRole("boonPlayer", Util.quickDPS);
+
+        cs.AddPlayerRole("DPSPlayer1", Util.DPS);
+        cs.AddPlayerRole("DPSPlayer2", Util.DPS);
+        cs.AddPlayerRole("DPSPlayer3", Util.DPS);
+
+        Console.WriteLine("get player roles)");
+
+
+        var roles = cs.GetPlayerRoles();
+        var roles2 = cs.GetPlayerRoles();
+
+
+
+        Assert.AreEqual(roles.Count(), roles2.Count());
+
+        for (var i = 0; i < roles.Count; i++) {
+            Assert.AreEqual(roles[i].Item1, roles2[i].Item1);
+            Assert.AreEqual(roles[i].Item2.name, roles2[i].Item2.name);
+        }
+
+    }
+
 }

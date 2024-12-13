@@ -163,6 +163,8 @@ internal class DancingLinks {
     int nextRowIdx = 0;
     List<DlxNode?> rowStarts = new List<DlxNode?>();
 
+    Stack<Stack<DlxNode>> btState = new Stack<Stack<DlxNode>>();
+
     int recursionDepth = 0;
 
 
@@ -239,6 +241,7 @@ internal class DancingLinks {
         }
 
         var rstack = new Stack<DlxNode>();
+        btState.Push(rstack);
 
         // First node in this row, will be removed during traversal
         // This is a backtracking point
@@ -313,14 +316,16 @@ internal class DancingLinks {
 
             }
 
-            // Failed so reinsert node and choose something else
+        // Failed so reinsert node and choose something else
         inconsitancyReached:
+            
             while (rstack.Count() != 0) {
                 var reinsertNode = rstack.Pop();
                 reinsertNode.reinsert();
             }
 
         }
+        btState.Pop();
 
         // return empty to signal we cant choose any here so next row up must choose
         return new List<int>();
@@ -330,7 +335,15 @@ internal class DancingLinks {
         recursionDepth = 0;
 
         DlxColumnHeader selectedColumn = columns[0];
-        return Solve(columns[0]);
+        var res = Solve(columns[0]);
+
+        while (btState.Count() != 0) {
+            var substack = btState.Pop();
+            while (substack.Count() != 0) {
+                substack.Pop().reinsert();
+            }
+        }
+        return res;
     }
 
 
