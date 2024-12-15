@@ -27,7 +27,9 @@ public class Program {
 
 
     public static async Task Main() {
-        _configuration = new ConfigurationBuilder().Build();
+        _configuration = new ConfigurationBuilder()
+            .AddUserSecrets<Program>()
+            .Build();
 
         _services = new ServiceCollection()
            .AddSingleton(_configuration)
@@ -44,7 +46,7 @@ public class Program {
         await _services.GetRequiredService<InteractionHandler>().InitializeAsync();
 
         Console.WriteLine("login");
-        var token = "NzgwODM0OTcwMzYxMDA0MDMy.GZaS_1.tO2qaO7f3OFEfkFVw0UcqtnZad5K0CxXhHdmCA";      
+        var token = _configuration["token"];
         await _client.LoginAsync(TokenType.Bot, token);
 
         Console.WriteLine("start");
