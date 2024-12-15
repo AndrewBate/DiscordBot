@@ -298,5 +298,179 @@ public sealed class Test1 {
 
         }
     }
+
+    [TestMethod, Timeout(1000)]
+    public void TestNeededJustDeeps() {
+        var cs = new ConstraintSolver(Util.basicFractalSquad);
+
+        cs.AddPlayerRole("healPlayer", Util.healAlac);
+        cs.AddPlayerRole("healPlayer", Util.healQuick);
+
+        cs.AddPlayerRole("boonPlayer", Util.alacDPS);
+        cs.AddPlayerRole("boonPlayer", Util.quickDPS);
+
+        cs.AddPlayerRole("DPSPlayer1", Util.DPS);
+        cs.AddPlayerRole("DPSPlayer2", Util.DPS);
+   
+
+        var needed = cs.GetNeededRoles();
+
+        foreach(var (role, count) in needed) {
+            Console.WriteLine("role: {0}, count: {1}", role.name, count);
+        }
+
+        Assert.AreEqual(needed.Count, 1);
+        Assert.AreEqual(needed[0].Item1.name , Util.DPS.name);
+        Assert.AreEqual(needed[0].Item2, 1);
+    }
+
+    [TestMethod, Timeout(1000)]
+    public void TestNeededNearlyEmptySquad() {
+        var cs = new ConstraintSolver(Util.basicRaidSquad);
+        cs.AddPlayerRole("allP", Util.alacDPS);
+
+
+        var needed = cs.GetNeededRoles();
+        foreach (var (role, count) in needed) {
+            Console.WriteLine("role: {0}, count: {1}", role.name, count);
+        }
+
+        bool healQuickSeen = false;
+        bool dpsSeen = false;
+        foreach (var (role, count) in needed) {
+         
+            if (role.name == Util.healQuick.name) {
+                Assert.IsFalse(healQuickSeen);
+                healQuickSeen = true;
+                Assert.AreEqual(count, 1);
+            } else if (role.name == Util.DPS.name) {
+                Assert.IsFalse(dpsSeen);
+                dpsSeen = true;
+                Assert.AreEqual(count, 6);
+            } else {
+                Assert.Fail("unexpected role returned");
+            }
+
+        }
+
+        Assert.IsTrue(dpsSeen);
+ 
+        Assert.IsTrue(healQuickSeen);
+
+    }
+
+    [TestMethod, Timeout(1000)]
+    public void TestAvaliable() {
+        var cs = new ConstraintSolver(Util.basicFractalSquad);
+
+        cs.AddPlayerRole("allP", Util.alacDPS);
+        cs.AddPlayerRole("allP", Util.quickDPS);
+        cs.AddPlayerRole("allP", Util.healAlac);
+        cs.AddPlayerRole("allP", Util.healQuick);
+        cs.AddPlayerRole("allP", Util.DPS);
+
+        cs.AddPlayerRole("DPSPlayer1", Util.DPS);
+        cs.AddPlayerRole("DPSPlayer2", Util.DPS);
+
+        var avaliable = cs.GetAvailiableRoles();
+
+        Assert.AreEqual(avaliable.Count, 5);
+      
+
+        bool alacdpsSeen = false;
+        bool quickdpsSeen = false;
+        bool healAlacSeen = false;
+        bool healQuickSeen = false;
+        bool dpsSeen = false;
+
+        foreach (var (role, count) in avaliable) {
+            if (role.name == Util.alacDPS.name) {
+                Assert.IsFalse(alacdpsSeen);
+                alacdpsSeen = true;
+                Assert.AreEqual(count, 1);
+
+            } else if (role.name == Util.quickDPS.name) {
+                Assert.IsFalse(quickdpsSeen);
+                quickdpsSeen = true;
+                Assert.AreEqual(count, 1);
+            } else if (role.name == Util.healAlac.name) {
+                Assert.IsFalse(healAlacSeen);
+                healAlacSeen = true;
+                Assert.AreEqual(count, 1);
+            } else if (role.name == Util.healQuick.name) {
+                Assert.IsFalse(healQuickSeen);
+                healQuickSeen = true;
+                Assert.AreEqual(count, 1);
+            } else if (role.name == Util.DPS.name) {
+                Assert.IsFalse(dpsSeen);
+                dpsSeen = true;
+                Assert.AreEqual(count, 1);
+            } else {
+                Assert.Fail("unexpected role returned");
+            }
+        
+        }
+
+        Assert.IsTrue(dpsSeen);
+        Assert.IsTrue(quickdpsSeen);
+        Assert.IsTrue(alacdpsSeen);
+        Assert.IsTrue(healAlacSeen);
+        Assert.IsTrue(healQuickSeen);
+
+
+    }
+    [TestMethod, Timeout(1000)]
+    public void TestAvaliableEmptySquad() {
+        var cs = new ConstraintSolver(Util.basicRaidSquad);
+
+
+
+        var avaliable = cs.GetAvailiableRoles();
+
+        Assert.AreEqual(avaliable.Count, 5);
+
+
+        bool alacdpsSeen = false;
+        bool quickdpsSeen = false;
+        bool healAlacSeen = false;
+        bool healQuickSeen = false;
+        bool dpsSeen = false;
+
+        foreach (var (role, count) in avaliable) {
+            if (role.name == Util.alacDPS.name) {
+                Assert.IsFalse(alacdpsSeen);
+                alacdpsSeen = true;
+                Assert.AreEqual(count, 2);
+
+            } else if (role.name == Util.quickDPS.name) {
+                Assert.IsFalse(quickdpsSeen);
+                quickdpsSeen = true;
+                Assert.AreEqual(count, 2);
+            } else if (role.name == Util.healAlac.name) {
+                Assert.IsFalse(healAlacSeen);
+                healAlacSeen = true;
+                Assert.AreEqual(count, 2);
+            } else if (role.name == Util.healQuick.name) {
+                Assert.IsFalse(healQuickSeen);
+                healQuickSeen = true;
+                Assert.AreEqual(count, 2);
+            } else if (role.name == Util.DPS.name) {
+                Assert.IsFalse(dpsSeen);
+                dpsSeen = true;
+                Assert.AreEqual(count, 6);
+            } else {
+                Assert.Fail("unexpected role returned");
+            }
+
+        }
+
+        Assert.IsTrue(dpsSeen);
+        Assert.IsTrue(quickdpsSeen);
+        Assert.IsTrue(alacdpsSeen);
+        Assert.IsTrue(healAlacSeen);
+        Assert.IsTrue(healQuickSeen);
+
+
+    }
 }
 

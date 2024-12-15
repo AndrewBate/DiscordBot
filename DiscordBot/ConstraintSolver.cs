@@ -12,6 +12,7 @@ namespace DiscordBot;
 
 public struct SquadRequirements {
     public string name; // Used for lookup by user for appoprate role set (raid wind / fractal comp)
+    public uint teamSize;
     public List<Role> roles; // The roles that are valid
     public Dictionary<string, int> attributeCount; // How much of heal/boons/dps are needed in total
 };
@@ -48,6 +49,7 @@ public class Util {
 
     public static SquadRequirements basicRaidSquad = new SquadRequirements() {
         name = "standard raid squad",
+        teamSize = 10,
         roles = new List<Role>() { healAlac, healQuick, alacDPS, quickDPS, DPS },
         attributeCount = new Dictionary<string, int>() {
             { "heal", 2 },
@@ -58,7 +60,8 @@ public class Util {
         },
     };
     public static SquadRequirements basicFractalSquad = new SquadRequirements() {
-        name = "standard raid squad",
+        name = "standard fractal",
+        teamSize = 5,
         roles = new List<Role>() { healAlac, healQuick, alacDPS, quickDPS, DPS },
         attributeCount = new Dictionary<string, int>() {
             { "heal", 1 },
@@ -187,13 +190,114 @@ public class ConstraintSolver {
     }
 
     // Minimums of each role
-    public List<Tuple<Role, int>> GetNeededRoles() {
-        return new List<Tuple<Role, int>>();
+    public List<(Role, int)> GetNeededRoles() {
+        var playersToAdd = this.Requirements.teamSize - this.Players.Count();
+
+        var playerNames = new List<string>();
+
+        for (var i = 0; i < playersToAdd; i++) {
+            playerNames.Add("!£$^&,>IA " + i.ToString());
+        }
+
+        var neededRoles = new List<(Role, int)>();
+
+        foreach (var role in Requirements.roles) {
+            // For each role try to make a valid squad with s=0..n players as selected role
+            // and n-s players that can fill that role
+
+
+            // Try to fill a squad with playersToAdd - i of role 
+            //                   and     i  of anything but role
+            // record last Success
+            int iWithSuccesWithLeastOfRole = -1;
+            for (var i = 0; i <= playersToAdd; i++) {
+
+                for (var j = 0; j < i; j++) {
+                    foreach (var otherRoles in Requirements.roles) {
+                        if (otherRoles.name != role.name) {
+                            AddPlayerRole(playerNames[j], otherRoles);
+                        }
+                    }
+                }
+                for (var j = i; j < playersToAdd; j++) {
+                    AddPlayerRole(playerNames[j], role);
+                }
+
+                var squad = GetPlayerRoles();
+
+                foreach (var player in playerNames) {
+                    RemovePlayer(player);
+                }
+
+                if (squad.Count != 0) {
+                    iWithSuccesWithLeastOfRole = i;
+                }
+            }
+            if (iWithSuccesWithLeastOfRole == -1) {
+                throw new Exception("Needed roles called on impossible squad");
+            }
+            int needed = (int)(playersToAdd - iWithSuccesWithLeastOfRole);
+            if (needed != 0) {
+                neededRoles.Add((role, needed));
+            }
+        }
+
+        return neededRoles;  
     }
 
     // Maximums of each role
-    public List<Tuple<Role, int>> GetAvailiableRoles() {
-        return new List<Tuple<Role, int>>();
+    public List<(Role, int)> GetAvailiableRoles() {
+        var playersToAdd = this.Requirements.teamSize - this.Players.Count();
+
+        var playerNames = new List<string>();
+
+        for (var i = 0; i < playersToAdd; i++) {
+            playerNames.Add("!£$^&,>IA " + i.ToString());
+        }
+
+        var avaliableRoles = new List<(Role, int)>();
+
+        foreach (var role in Requirements.roles) {
+      
+            // Try to fill a squad with i of role 
+            //                   and    playersToAdd - i of anything but role
+            // record last Success
+            int iWithSuccesWithMostOfRole = -1;
+            for (var i = 0; i <= playersToAdd; i++) {
+
+                for (var j = 0; j < i; j++) {
+                    AddPlayerRole(playerNames[j], role);
+                }
+
+                for (var j = i; j < playersToAdd; j++) {
+                    foreach (var otherRoles in Requirements.roles) {
+                        if (otherRoles.name != role.name) {
+                            AddPlayerRole(playerNames[j], otherRoles);
+                        }
+                    }
+                }
+
+                var squad = GetPlayerRoles();
+
+                foreach (var player in playerNames) {
+                    RemovePlayer(player);
+                }
+
+                if (squad.Count != 0) {
+                    iWithSuccesWithMostOfRole = i;
+                }
+            }
+            if (iWithSuccesWithMostOfRole == -1) {
+                throw new Exception("Avaliable roles called on impossible squad");
+            }
+
+            int avaliable = (int)(iWithSuccesWithMostOfRole);
+            if (avaliable != 0) {
+                avaliableRoles.Add((role, avaliable));
+            }
+        }
+
+        return avaliableRoles;
     }
 
     // Solve for players
