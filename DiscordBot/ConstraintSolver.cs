@@ -76,14 +76,22 @@ public class ConstraintSolver {
 
     DancingLinks Dlx = new DancingLinks();
 
-    Dictionary<string, int> AttributeColumnHeaderIdxs =
-        new Dictionary<string, int>();
+    Dictionary<string, int> AttributeColumnHeaderIdxs = new Dictionary<string, int>();
 
-    Dictionary<string, int> PlayerColumnHeaderIdxs =
-        new Dictionary<string, int>();
+    Dictionary<string, Player> Players = new Dictionary<string, Player>();
+    Dictionary<int, (string,Role)> DlxRowIdxMap = new Dictionary<int , (string,Role)>();
 
-    List<Tuple<string, Role>> PlayerRoles
-        = new List<Tuple<string, Role>>();
+    class Player {
+        public string Name;
+        public int ColumnHeaderIdx;
+        public Dictionary<Role, int> Roles;
+
+        public Player(string name, int columnHeaderIdx) {
+            Name = name;
+            ColumnHeaderIdx = columnHeaderIdx;
+            Roles = new Dictionary<Role, int>();
+        }
+    }
 
     SquadRequirements Requirements;
 
@@ -102,8 +110,22 @@ public class ConstraintSolver {
     }
 
     public int AddPlayerRole(string playername, Role role) {
-        
+
+
+
+        Player player;
+        if (! Players.TryGetValue(playername, out player) ) {
+            var headerIdx = Dlx.addColumnHeader(1, 1, playername + "_hdr");
+            player = new Player(playername, headerIdx);
+            Players[playername] = player;
+        }
+
+        if (player.Roles.ContainsKey(role)) {
+            throw new Exception("duplicate roles");
+        }
+
         var rowIdx = Dlx.getNextRowIdx();
+        player.Roles.Add(role, rowIdx);
 
         foreach (var attr in role.attributes) {
             // Insert nodes
@@ -113,30 +135,55 @@ public class ConstraintSolver {
             Dlx.addNode(rowIdx, attridx, playername + " as " + role.name + " attr : " + attr);
         }
 
-        // Lookup player column idx
-        int playeridx;
-
-        if (PlayerColumnHeaderIdxs.ContainsKey(playername)) {
-            playeridx = PlayerColumnHeaderIdxs[playername];
-        } else {
-            playeridx = Dlx.addColumnHeader(1, 1, playername + "_hdr");
-            PlayerColumnHeaderIdxs[playername] = playeridx;
-        }
-
         // insert player node (and column header if needed)
-        Dlx.addNode(rowIdx, playeridx, playername + " as " + role.name + " playerCol");
+        Dlx.addNode(rowIdx, player.ColumnHeaderIdx, playername + " as " + role.name + " playerCol");
 
-        PlayerRoles.Add(new Tuple<string, Role>(playername, role));
+        DlxRowIdxMap.Add(rowIdx, (playername ,role) );
 
         return rowIdx;
     }
 
+    // Returns the number of remaining roles of the player, removing the player if it reaches 0
     public int RemovePlayerRole(string playername, Role role) {
-        throw new NotImplementedException();
+        Player player;
+
+        if (!Players.TryGetValue(playername, out player)) {
+            throw new Exception("No such player: " + playername);
+        }
+
+        if (player.Roles.ContainsKey(role)) {
+
+            //remove role node
+            var dlxRowIdx = player.Roles[role];
+
+            player.Roles.Remove(role);
+            Dlx.removeRow(dlxRowIdx);
+            DlxRowIdxMap.Remove(dlxRowIdx);
+
+            var count = player.Roles.Count();
+
+            if (count == 0) {
+                //remove player
+                Players.Remove(playername);
+                Dlx.removeColumnHeader(player.ColumnHeaderIdx);
+            }
+
+            return count;
+        } else {
+            throw new Exception(playername + " is has no such role: " + role.name);
+        }
     }
 
-    public int RemovePlayer(string playername) {
-        throw new NotImplementedException();
+    public void RemovePlayer(string playername) {
+        Player player;
+
+        if (!Players.TryGetValue(playername, out player)) {
+            throw new Exception("No such player: " + playername);
+        }
+
+        foreach (var role in player.Roles.Keys) {
+            RemovePlayerRole(playername, role);
+        }
     }
 
     // Minimums of each role
@@ -150,7 +197,7 @@ public class ConstraintSolver {
     }
 
     // Solve for players
-    public List<Tuple<string, Role>> GetPlayerRoles() {
+    public List<(string, Role)> GetPlayerRoles() {
         var dlxRes = Dlx.Solve();
 
 
@@ -158,10 +205,10 @@ public class ConstraintSolver {
             CheckResults(dlxRes);
         }
 
-        var res = new List<Tuple<string, Role>>();
+        var res = new List<(string, Role)>();
 
         foreach (var role in dlxRes) {
-            res.Add(PlayerRoles[role]);
+            res.Add(DlxRowIdxMap[role]);
         }
 
         return res;
@@ -172,7 +219,7 @@ public class ConstraintSolver {
         Dictionary<string, int> players = new Dictionary<string, int>();
         Dictionary<string, int> attributes = new Dictionary<string, int>();
 
-        foreach (var player in PlayerColumnHeaderIdxs.Keys ) {
+        foreach (var player in Players.Keys ) {
             players.Add(player, 0);
         }
 
@@ -182,7 +229,7 @@ public class ConstraintSolver {
 
         // Each player once
         foreach (var rolidx in dlxRes) {
-            var (playername, role) = PlayerRoles[rolidx];
+            var (playername, role) = DlxRowIdxMap[rolidx];
 
             players[playername] = players[playername] + 1;
           

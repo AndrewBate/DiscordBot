@@ -44,7 +44,9 @@ public enum RemoveMode {
     None,
     Plain,
     Selected,
-    Impossible
+    Impossible,
+    RemovingPlayerRole,
+    RemovingColumn,
 }
 
 
@@ -111,15 +113,17 @@ internal class DlxNode {
                 columnHeader.current++;
                 break;
 
+            case RemoveMode.RemovingPlayerRole:
             case RemoveMode.Impossible:
                 if (isColumnHeader()) { throw new Exception("marking column header as impossible"); }
                 columnHeader.avail--;
                 break;
 
+            case RemoveMode.RemovingColumn:
             case RemoveMode.Plain:
                 if (!isColumnHeader()) { throw new Exception("removing node withoug updating header"); }
                 break;
-
+                
             default:
                 break;
         }
@@ -148,7 +152,9 @@ internal class DlxNode {
                 break;
 
 
-            case RemoveMode.None: throw new Exception();
+            case RemoveMode.None: throw new Exception("reinserting node not removed");
+            case RemoveMode.RemovingPlayerRole: throw new Exception("reinserting node for removed role");
+            case RemoveMode.RemovingColumn: throw new Exception("reinserting column removed externaly");
 
         }
         mode = RemoveMode.None;
@@ -159,9 +165,11 @@ internal class DlxNode {
 
 
 internal class DancingLinks {
-    List<DlxColumnHeader> columns = new List<DlxColumnHeader>();
+    int nextColumnIdx = 0;
+    Dictionary<int, DlxColumnHeader> columns = new Dictionary<int, DlxColumnHeader>();
+    
     int nextRowIdx = 0;
-    List<DlxNode?> rowStarts = new List<DlxNode?>();
+    Dictionary<int, DlxNode?> rowStarts = new Dictionary<int, DlxNode?>();
 
     Stack<Stack<DlxNode>> btState = new Stack<Stack<DlxNode>>();
 
@@ -169,7 +177,7 @@ internal class DancingLinks {
 
 
     public int getNextRowIdx() {
-        rowStarts.Add(null);
+        rowStarts.Add(nextRowIdx, null);
         return nextRowIdx++;
     }
 
@@ -197,12 +205,30 @@ internal class DancingLinks {
         }
     }
 
-    public int addColumnHeader(int min, int max, string nodeInfo) {
-        var hdr = new DlxColumnHeader(min, max, columns.Count(), nodeInfo);
-        columns.Add(hdr);
+    public void removeRow(int rowIdx) {
+        var first = rowStarts[rowIdx];
 
-        if (columns.Count() != 0) {
-            var first = columns[0];
+        if (first != null) {
+            for(var node = first; node.mode == RemoveMode.None; node = node.left ) {
+                node.remove(RemoveMode.RemovingPlayerRole);
+            }         
+        }
+
+        rowStarts.Remove(rowIdx);
+    }
+
+   
+
+    public int addColumnHeader(int min, int max, string nodeInfo) {
+
+        var idx = nextColumnIdx++;
+        
+        var hdr = new DlxColumnHeader(min, max, idx, nodeInfo);
+
+        
+        if (columns.Count != 0) {
+            var first = columns.Values.First();
+            
             hdr.left = first.left;
             hdr.right = first;
 
@@ -210,7 +236,17 @@ internal class DancingLinks {
             first.left = hdr;
         }
 
-        return columns.Count() - 1;
+
+        columns.Add(idx, hdr);
+
+
+        return idx;
+    }
+
+    public void removeColumnHeader(int idx) {
+        var hdr = columns[idx];
+        hdr.remove(RemoveMode.RemovingColumn);
+
     }
 
     List<int> Solve(DlxColumnHeader hdr) {
@@ -288,7 +324,7 @@ internal class DancingLinks {
 
             DlxColumnHeader? remainingColumnHeader = null;
 
-            foreach (var colhdr in columns) {
+            foreach (var colhdr in columns.Values) {
                 if (colhdr.mode == RemoveMode.None) {
 
                     if (colhdr.min > colhdr.current) {
