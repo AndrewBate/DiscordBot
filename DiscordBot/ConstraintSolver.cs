@@ -177,6 +177,7 @@ public class ConstraintSolver {
         }
     }
 
+
     public void RemovePlayer(string playername) {
         Player player;
 
@@ -189,8 +190,8 @@ public class ConstraintSolver {
         }
     }
 
-    // Minimums of each role
-    public List<(Role, int)> GetNeededRoles() {
+    public List<(Role, int, int)> GetRoleRequirements() {
+
         var playersToAdd = this.Requirements.teamSize - this.Players.Count();
 
         var playerNames = new List<string>();
@@ -199,7 +200,7 @@ public class ConstraintSolver {
             playerNames.Add("!£$^&,>IA " + i.ToString());
         }
 
-        var neededRoles = new List<(Role, int)>();
+        var roleRequirements = new List<(Role, int, int)>();
 
         foreach (var role in Requirements.roles) {
             // For each role try to make a valid squad with s=0..n players as selected role
@@ -209,20 +210,26 @@ public class ConstraintSolver {
             // Try to fill a squad with playersToAdd - i of role 
             //                   and     i  of anything but role
             // record last Success
-            int iWithSuccesWithLeastOfRole = -1;
+            var needed = int.MaxValue;
+            var max = 0;
+            bool succeded = false;
             for (var i = 0; i <= playersToAdd; i++) {
 
-                for (var j = 0; j < i; j++) {
+                int ofSelected = i;
+
+                for (var j = 0; j < ofSelected; j++) {
+                    AddPlayerRole(playerNames[j], role);
+                }
+
+
+                for (var j = ofSelected; j < playersToAdd; j++) {
                     foreach (var otherRoles in Requirements.roles) {
                         if (otherRoles.name != role.name) {
                             AddPlayerRole(playerNames[j], otherRoles);
                         }
                     }
                 }
-                for (var j = i; j < playersToAdd; j++) {
-                    AddPlayerRole(playerNames[j], role);
-                }
-
+            
                 var squad = GetPlayerRoles();
 
                 foreach (var player in playerNames) {
@@ -230,74 +237,49 @@ public class ConstraintSolver {
                 }
 
                 if (squad.Count != 0) {
-                    iWithSuccesWithLeastOfRole = i;
+                    succeded = true;
+                    needed = Math.Min(needed, ofSelected);
+                    max = Math.Max(max, ofSelected);
                 }
+ 
             }
-            if (iWithSuccesWithLeastOfRole == -1) {
+            if (!succeded) {
                 throw new Exception("Needed roles called on impossible squad");
             }
-            int needed = (int)(playersToAdd - iWithSuccesWithLeastOfRole);
-            if (needed != 0) {
-                neededRoles.Add((role, needed));
-            }
+            
+            
+            roleRequirements.Add((role, needed, max));
+            
         }
 
-        return neededRoles;  
+        return roleRequirements;
+    }
+
+    
+
+    // Minimums of each role
+    public List<(Role, int)> GetNeededRoles() {
+        var rr = GetRoleRequirements();
+
+        var rv = rr
+            .Where(a => a.Item2 != 0)
+            .Select(a => (a.Item1, a.Item2));
+
+        return rv.ToList();
+
     }
 
     // Maximums of each role
     public List<(Role, int)> GetAvailiableRoles() {
-        var playersToAdd = this.Requirements.teamSize - this.Players.Count();
 
-        var playerNames = new List<string>();
+        var rr = GetRoleRequirements();
 
-        for (var i = 0; i < playersToAdd; i++) {
-            playerNames.Add("!£$^&,>IA " + i.ToString());
-        }
+        var rv = rr
+            .Where(a => a.Item3 != 0)
+            .Select(a => (a.Item1, a.Item3));
 
-        var avaliableRoles = new List<(Role, int)>();
+        return rv.ToList();
 
-        foreach (var role in Requirements.roles) {
-      
-            // Try to fill a squad with i of role 
-            //                   and    playersToAdd - i of anything but role
-            // record last Success
-            int iWithSuccesWithMostOfRole = -1;
-            for (var i = 0; i <= playersToAdd; i++) {
-
-                for (var j = 0; j < i; j++) {
-                    AddPlayerRole(playerNames[j], role);
-                }
-
-                for (var j = i; j < playersToAdd; j++) {
-                    foreach (var otherRoles in Requirements.roles) {
-                        if (otherRoles.name != role.name) {
-                            AddPlayerRole(playerNames[j], otherRoles);
-                        }
-                    }
-                }
-
-                var squad = GetPlayerRoles();
-
-                foreach (var player in playerNames) {
-                    RemovePlayer(player);
-                }
-
-                if (squad.Count != 0) {
-                    iWithSuccesWithMostOfRole = i;
-                }
-            }
-            if (iWithSuccesWithMostOfRole == -1) {
-                throw new Exception("Avaliable roles called on impossible squad");
-            }
-
-            int avaliable = (int)(iWithSuccesWithMostOfRole);
-            if (avaliable != 0) {
-                avaliableRoles.Add((role, avaliable));
-            }
-        }
-
-        return avaliableRoles;
     }
 
     // Solve for players
